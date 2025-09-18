@@ -1,0 +1,262 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Vyral</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,300;9..144,400;9..144,600;9..144,700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <header class="site-header">
+    <div class="container nav">
+      <div class="brand">Vyral</div>
+      <nav class="primary-nav">
+        <a href="#">Home</a>
+        <a href="products.html">Products</a>
+        <a href="#about">About</a>
+        <a href="#contact">Contact</a>
+      </nav>
+      <div class="actions">
+        <a class="cta" href="products.html">Shop Now</a>
+        <a class="cart" href="#cart" aria-label="Cart">
+          Cart <span id="cart-count">0</span>
+        </a>
+      </div>
+    </div>
+  </header>
+
+  <main>
+    <section class="split-hero" id="home">
+      <div class="container split-hero-inner">
+        <div class="split-hero-left">
+          <div class="eyebrow">Vyral — South Africa</div>
+          <h1 class="display">Modern Objects. Minimal Attitude.</h1>
+          <p class="lede">We craft limited-run pieces with a sharp, monochrome aesthetic. Considered forms, premium finishes, designed to live loud in quiet spaces.</p>
+          <div class="hero-actions">
+            <a class="btn primary" href="products.html">Shop the Collection</a>
+            <a class="btn" href="#about">About Vyral</a>
+          </div>
+        </div>
+        <div class="split-hero-right">
+          <div class="panel">
+            <div class="panel-line"></div>
+            <div class="panel-copy">
+              <div class="kicker">Limited Drops</div>
+              <p>Each release is produced in small batches with exclusive packaging and numbered cards.</p>
+            </div>
+            <div class="panel-line"></div>
+            <div class="panel-copy">
+              <div class="kicker">Designed in SA</div>
+              <p>Rooted in South African creativity. Built for a global, trend-forward audience.</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section id="about" class="product-section about-section">
+      <div class="container">
+        <h2 class="section-title">About Vyral</h2>
+        <p class="section-copy">We started Vyral to bring a curated, design-forward perspective to everyday objects. From statement rugs to desk essentials, we obsess over materials, finish, and experience. Every drop is limited, packaged exclusively, and built to be part of your story.</p>
+        <blockquote class="manifesto">Make it minimal. Make it meaningful. Make it Vyral.</blockquote>
+      </div>
+    </section>
+
+    
+  </main>
+
+  <footer class="site-footer" id="contact">
+    <div class="container">
+      <p>© 2025 Vyral • All rights reserved</p>
+    </div>
+  </footer>
+  <!-- Cart UI -->
+  <div class="overlay" id="overlay" hidden></div>
+  <aside class="cart-drawer" id="cart-drawer" aria-hidden="true" aria-labelledby="cart-title" role="dialog">
+    <div class="cart-header">
+      <h3 id="cart-title">Your Cart</h3>
+      <button class="icon-btn" id="cart-close" aria-label="Close cart">×</button>
+    </div>
+    <div class="cart-body">
+      <ul id="cart-items" class="cart-items"></ul>
+    </div>
+    <div class="cart-footer">
+      <div class="total"><span>Subtotal</span><strong id="cart-subtotal">R0.00</strong></div>
+      <div class="total"><span>Fee</span><strong>R50.00</strong></div>
+      <div class="total"><span>Total</span><strong id="cart-total">R50.00</strong></div>
+      <div class="cart-actions">
+        <button class="btn small" id="cart-clear" type="button">Clear</button>
+        <a class="btn primary" href="checkout.html">Checkout</a>
+      </div>
+    </div>
+  </aside>
+  <script>
+    (function() {
+      const STORAGE_KEY = 'vyral_cart';
+      const countEl = document.getElementById('cart-count');
+      const drawer = document.getElementById('cart-drawer');
+      const overlay = document.getElementById('overlay');
+      const itemsEl = document.getElementById('cart-items');
+      const totalEl = document.getElementById('cart-total');
+      const closeBtn = document.getElementById('cart-close');
+      const clearBtn = document.getElementById('cart-clear');
+
+      function readCart() {
+        try { return JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]'); }
+        catch { return []; }
+      }
+
+      function writeCart(items) {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(items));
+      }
+
+      function updateCount() {
+        const items = readCart();
+        const totalQty = items.reduce((sum, it) => sum + (it.qty || 1), 0);
+        if (countEl) countEl.textContent = String(totalQty);
+      }
+
+      function addToCartFromCard(card) {
+        const title = card.querySelector('h3')?.textContent?.trim() || 'Item';
+        const priceAttr = card.querySelector('.price')?.getAttribute('data-price') || '0';
+        const priceText = priceAttr.replace(/[^0-9.]/g, '');
+        const price = parseFloat(priceText) || 0;
+        const image = card.querySelector('img')?.src || '';
+
+        const items = readCart();
+        const slug = card.getAttribute('data-slug') || title.toLowerCase().replace(/\s+/g, '-');
+        const key = slug + '|' + price;
+        const existing = items.find(i => i.key === key);
+        if (existing) {
+          existing.qty = 1; // limit to one per product
+          const btn = card.querySelector('.add-to-cart');
+          if (btn) { btn.textContent = 'Added'; btn.disabled = true; }
+          highlightAddButton(card);
+          renderCart();
+          updateCount();
+          return;
+        }
+        items.push({ key, slug, title, price, image, qty: 1 });
+        writeCart(items);
+        updateCount();
+        renderCart();
+        highlightAddButton(card);
+      }
+
+      function highlightAddButton(card) {
+        const btn = card.querySelector('.add-to-cart');
+        if (!btn) return;
+        btn.classList.remove('pulse');
+        // Force reflow to restart animation
+        void btn.offsetWidth;
+        btn.classList.add('pulse');
+      }
+
+      function renderCart() {
+        const items = readCart();
+        itemsEl.innerHTML = items.map(it => {
+          const line = (it.price * (it.qty || 1)).toFixed(2);
+          return `
+            <li class="cart-item" data-key="${it.key}">
+              <img src="${it.image}" alt="${it.title}"/>
+              <div class="meta">
+                <div class="title">${it.title}</div>
+                <div class="price-qty">R${it.price.toFixed(2)} × ${it.qty || 1}</div>
+              </div>
+              <div class="line">
+                <span>R${line}</span>
+                <button class="icon-btn remove" aria-label="Remove">×</button>
+                <a class="icon-btn" href="#" data-open-item title="View">›</a>
+              </div>
+            </li>`;
+        }).join('');
+        const subtotal = items.reduce((sum, it) => sum + it.price * (it.qty || 1), 0);
+        const fee = 50;
+        const total = subtotal + fee;
+        document.getElementById('cart-subtotal').textContent = `R${subtotal.toFixed(2)}`;
+        totalEl.textContent = `R${total.toFixed(2)}`;
+      }
+
+      function openCart() {
+        renderCart();
+        drawer?.setAttribute('aria-hidden', 'false');
+        overlay?.removeAttribute('hidden');
+        document.body.style.overflow = 'hidden';
+      }
+
+      function closeCart() {
+        drawer?.setAttribute('aria-hidden', 'true');
+        overlay?.setAttribute('hidden', '');
+        document.body.style.overflow = '';
+      }
+
+      document.addEventListener('click', function(e) {
+        const addBtn = e.target.closest('.add-to-cart');
+        if (addBtn) {
+          const card = addBtn.closest('.product-card');
+          if (card) addToCartFromCard(card);
+          return;
+        }
+
+        const cartLink = e.target.closest('.cart');
+        if (cartLink) {
+          e.preventDefault();
+          openCart();
+          return;
+        }
+
+        const close = e.target.closest('#cart-close');
+        if (close) { closeCart(); return; }
+
+        if (e.target === overlay) { closeCart(); return; }
+
+        const removeBtn = e.target.closest('.cart-item .remove');
+        if (removeBtn) {
+          const li = removeBtn.closest('.cart-item');
+          const key = li?.getAttribute('data-key');
+          if (key) {
+            const items = readCart().filter(i => i.key !== key);
+            writeCart(items);
+            updateCount();
+            renderCart();
+            // Re-enable add button if present on page
+            const slug = key.split('|')[0];
+            const card = document.querySelector(`.product-card[data-slug="${slug}"]`);
+            const btn = card?.querySelector('.add-to-cart');
+            if (btn) { btn.textContent = 'Add to Cart'; btn.disabled = false; }
+          }
+          return;
+        }
+
+        const openItem = e.target.closest('[data-open-item]');
+        if (openItem) {
+          const li = openItem.closest('.cart-item');
+          const key = li?.getAttribute('data-key');
+          const items = readCart();
+          const it = items.find(i => i.key === key);
+          if (it?.slug) {
+            window.location.href = `product.html?slug=${encodeURIComponent(it.slug)}`;
+          }
+          return;
+        }
+      });
+
+      document.addEventListener('keydown', function(e) {
+        if (e.key === 'Escape') closeCart();
+      });
+
+      clearBtn?.addEventListener('click', function() {
+        writeCart([]);
+        updateCount();
+        renderCart();
+      });
+
+      updateCount();
+      renderCart();
+    })();
+  </script>
+</body>
+</html>

@@ -1,0 +1,188 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Vyral • Product</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <header class="site-header">
+    <div class="container nav">
+      <div class="brand">Vyral</div>
+      <nav class="primary-nav">
+        <a href="index.html#">Home</a>
+        <a href="index.html#products">Products</a>
+        <a href="index.html#about">About</a>
+        <a href="index.html#contact">Contact</a>
+      </nav>
+      <div class="actions">
+        <a class="cta" href="index.html#products">Shop Now</a>
+        <a class="cart" href="index.html#cart">Cart <span id="cart-count">0</span></a>
+      </div>
+    </div>
+  </header>
+
+  <main>
+    <section class="container" style="padding:24px 16px 56px;">
+      <div class="product-detail">
+        <div class="gallery">
+          <img id="main-image" src="" alt="" />
+          <div class="thumbs" id="thumbs"></div>
+        </div>
+        <div class="info">
+          <h1 id="title"></h1>
+          <div class="price" id="price"></div>
+          <p id="description"></p>
+          <div style="display:flex; gap:10px; margin:16px 0;">
+            <button class="btn primary" id="add">Add to Cart</button>
+            <a class="btn" href="index.html#products">Back</a>
+          </div>
+
+          <div class="tabs">
+            <button class="tab active" data-tab="details">Details</button>
+            <button class="tab" data-tab="about">About</button>
+          </div>
+          <div class="tab-panels">
+            <div class="panel active" id="tab-details">
+              <p id="longdesc"></p>
+            </div>
+            <div class="panel" id="tab-about">
+              <p>Vyral products are produced in limited runs with exclusive packaging designed in South Africa. Each order is packed with care and shipped nation-wide.</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <footer class="site-footer" id="contact">
+    <div class="container">
+      <p>© 2025 Vyral • All rights reserved</p>
+    </div>
+  </footer>
+
+  <script>
+    (function(){
+      const STORAGE_KEY = 'vyral_cart';
+      const countEl = document.getElementById('cart-count');
+      const params = new URLSearchParams(location.search);
+      const slug = params.get('slug') || '';
+
+      const catalog = {
+        'vyral-rug': {
+          title: 'Vyral Rug', price: 129,
+          images: [
+            'https://picsum.photos/seed/vyral1/1200/800',
+            'https://picsum.photos/seed/vyral1b/1200/800'
+          ],
+          description: 'Statement rug for bold spaces.',
+          longdesc: 'Our Vyral Rug features premium fibers and a bold graphic designed to anchor modern interiors.'
+        },
+        'brick-art-set': {
+          title: 'Brick Art Set', price: 59,
+          images: [
+            'https://picsum.photos/seed/vyral2/1200/800',
+            'https://picsum.photos/seed/vyral2b/1200/800'
+          ],
+          description: 'Modular pop-culture brick set.',
+          longdesc: 'Create iconic scenes with this modular brick art set. Endless combinations, museum-worthy display.'
+        },
+        'neon-ornament': {
+          title: 'Neon Ornament', price: 39,
+          images: [
+            'https://picsum.photos/seed/vyral3/1200/800',
+            'https://picsum.photos/seed/vyral3b/1200/800'
+          ],
+          description: 'Bring glow to any corner.',
+          longdesc: 'A compact neon-style ornament adding ambience to desks and shelves, with low energy draw.'
+        },
+        'hype-poster': {
+          title: 'Hype Poster', price: 29,
+          images: [
+            'https://picsum.photos/seed/vyral4/1200/800',
+            'https://picsum.photos/seed/vyral4b/1200/800'
+          ],
+          description: 'Minimal print that stands out.',
+          longdesc: 'Gallery-grade print on heavyweight matte stock. Minimalist design to complement any wall.'
+        },
+        'studio-lamp': {
+          title: 'Studio Lamp', price: 89,
+          images: [
+            'https://picsum.photos/seed/vyral5/1200/800',
+            'https://picsum.photos/seed/vyral5b/1200/800'
+          ],
+          description: 'Matte black with warm glow.',
+          longdesc: 'Directional studio lamp with a warm LED bulb. Perfect for desks and reading corners.'
+        },
+        'desk-mat': {
+          title: 'Desk Mat', price: 24,
+          images: [
+            'https://picsum.photos/seed/vyral6/1200/800',
+            'https://picsum.photos/seed/vyral6b/1200/800'
+          ],
+          description: 'Smooth surface, clean lines.',
+          longdesc: 'Premium desk mat offering a smooth surface for mouse and keyboard, with anti-slip base.'
+        }
+      };
+
+      function readCart(){ try { return JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]'); } catch { return []; } }
+      function writeCart(items){ localStorage.setItem(STORAGE_KEY, JSON.stringify(items)); }
+      function updateCount(){ const items = readCart(); const totalQty = items.reduce((s,i)=>s+(i.qty||1),0); if (countEl) countEl.textContent = String(totalQty); }
+
+      function render(){
+        const product = catalog[slug];
+        if (!product) { document.querySelector('.product-detail').innerHTML = '<p>Product not found.</p>'; return; }
+        document.title = 'Vyral • ' + product.title;
+        document.getElementById('title').textContent = product.title;
+        document.getElementById('price').textContent = 'R' + product.price.toFixed(2);
+        document.getElementById('description').textContent = product.description;
+        document.getElementById('longdesc').textContent = product.longdesc;
+
+        const main = document.getElementById('main-image');
+        const thumbs = document.getElementById('thumbs');
+        main.src = product.images[0];
+        main.alt = product.title;
+        thumbs.innerHTML = product.images.map((src,i)=>`<img data-i="${i}" src="${src}" alt="${product.title} ${i+1}">`).join('');
+        thumbs.addEventListener('click', (e)=>{
+          const img = e.target.closest('img');
+          if (!img) return;
+          const i = +img.getAttribute('data-i');
+          main.src = product.images[i];
+        });
+
+        const addBtn = document.getElementById('add');
+        // Disable if already in cart on load
+        (function(){
+          const items = readCart();
+          const key = slug + '|' + product.price;
+          if (items.find(i=>i.key===key)) { addBtn.textContent = 'Added'; addBtn.disabled = true; }
+        })();
+
+        addBtn.addEventListener('click', ()=>{
+          const items = readCart();
+          const key = slug + '|' + product.price;
+          const existing = items.find(i=>i.key===key);
+          if (existing) {
+            existing.qty = 1; // limit to one per product
+            addBtn.textContent = 'Added';
+            addBtn.disabled = true;
+            writeCart(items);
+            updateCount();
+            return;
+          }
+          items.push({ key, slug, title: product.title, price: product.price, image: product.images[0], qty: 1 });
+          writeCart(items);
+          updateCount();
+          addBtn.textContent = 'Added';
+          addBtn.disabled = true;
+        });
+      }
+
+      updateCount();
+      render();
+    })();
+  </script>
+</body>
+</html>
+

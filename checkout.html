@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Vyral • Checkout</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <header class="site-header">
+    <div class="container nav">
+      <div class="brand">Vyral</div>
+      <nav class="primary-nav">
+        <a href="index.html#">Home</a>
+        <a href="index.html#products">Products</a>
+      </nav>
+      <div class="actions">
+        <a class="cta" href="index.html#products">Continue Shopping</a>
+      </div>
+    </div>
+  </header>
+
+  <main>
+    <section class="container" style="padding:24px 16px 56px;">
+      <h1>Checkout</h1>
+      <div class="checkout">
+        <div class="checkout-form">
+          <h2>Contact</h2>
+          <form id="form">
+            <div class="field"><label>Full name<input required id="name"></label></div>
+            <div class="field"><label>Email<input type="email" required id="email"></label></div>
+            <div class="field"><label>Phone<input type="tel" id="phone"></label></div>
+            <p style="color:#666; font-size:14px;">You will be redirected to PayFast to securely complete your payment.</p>
+            <button class="btn primary" id="payfast" type="button">Pay with PayFast</button>
+          </form>
+          <p id="msg" style="margin-top:10px;color:#0a7"> </p>
+        </div>
+        <aside class="checkout-summary">
+          <h2>Order Summary</h2>
+          <ul id="summary-items" class="cart-items"></ul>
+          <div class="total"><span>Subtotal</span><strong id="summary-subtotal">R0.00</strong></div>
+          <div class="total"><span>Fee</span><strong>R50.00</strong></div>
+          <div class="total"><span>Total</span><strong id="summary-total">R50.00</strong></div>
+        </aside>
+      </div>
+    </section>
+  </main>
+
+  <footer class="site-footer">
+    <div class="container">
+      <p>© 2025 Vyral • All rights reserved</p>
+    </div>
+  </footer>
+
+  <script>
+    (function(){
+      const STORAGE_KEY='vyral_cart';
+      // PayFast merchant config (replace with your real values)
+      const PF_MERCHANT_ID = '10000100'; // demo id, replace
+      const PF_MERCHANT_KEY = '46f0cd694581a'; // demo key, replace
+      const PF_RETURN_URL = 'https://yourdomain.com/return';
+      const PF_CANCEL_URL = 'https://yourdomain.com/cancel';
+      const PF_NOTIFY_URL = 'https://yourdomain.com/payfast-ipn'; // server endpoint to verify payments
+      function readCart(){ try { return JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]'); } catch { return []; } }
+      function currency(n){ return 'R' + (n||0).toFixed(2); }
+      function render(){
+        const items = readCart();
+        const list = document.getElementById('summary-items');
+        list.innerHTML = items.map(it=>{
+          const line = (it.price * (it.qty||1));
+          return `<li class=\"cart-item\"><img src=\"${it.image}\" alt=\"${it.title}\"><div class=\"meta\"><div class=\"title\">${it.title}</div><div class=\"price-qty\">${currency(it.price)} × ${it.qty||1}</div></div><div class=\"line\"><span>${currency(line)}</span></div></li>`;
+        }).join('');
+        const subtotal = items.reduce((s,it)=>s+it.price*(it.qty||1),0);
+        const fee = 50;
+        const total = subtotal + fee;
+        document.getElementById('summary-subtotal').textContent = currency(subtotal);
+        document.getElementById('summary-total').textContent = currency(total);
+      }
+      // PayFast button: create auto-submitting form with cart summary
+      document.getElementById('payfast').onclick = () => {
+        const items = readCart();
+        if (!items.length) { alert('Your cart is empty.'); return; }
+        const name = document.getElementById('name').value;
+        const email = document.getElementById('email').value;
+        const subtotal = items.reduce((s,it)=>s+it.price*(it.qty||1),0);
+        const fee = 50;
+        const total = subtotal + fee;
+        const orderRef = generateOrderRef();
+        const amount = total.toFixed(2);
+        const itemName = `Vyral Order ${orderRef}`;
+        const itemDescription = items.map(i=>`${i.title} x${i.qty||1}`).join(', ');
+
+        const form = document.createElement('form');
+        form.method = 'POST';
+        form.action = 'https://www.payfast.co.za/eng/process';
+        form.style.display = 'none';
+        const fields = {
+          merchant_id: PF_MERCHANT_ID,
+          merchant_key: PF_MERCHANT_KEY,
+          return_url: PF_RETURN_URL,
+          cancel_url: PF_CANCEL_URL,
+          notify_url: PF_NOTIFY_URL,
+          name_first: name,
+          email_address: email,
+          m_payment_id: orderRef,
+          amount: amount,
+          item_name: itemName,
+          item_description: itemDescription
+        };
+        for (const [k,v] of Object.entries(fields)) {
+          const input = document.createElement('input');
+          input.type = 'hidden'; input.name = k; input.value = v;
+          form.appendChild(input);
+        }
+        document.body.appendChild(form);
+        form.submit();
+      };
+
+      function generateOrderRef(){
+        const d = new Date();
+        const ymd = `${d.getFullYear()}${String(d.getMonth()+1).padStart(2,'0')}${String(d.getDate()).padStart(2,'0')}`;
+        const rand = Math.random().toString(36).slice(2,7).toUpperCase();
+        return `VYRAL-${ymd}-${rand}`;
+      }
+
+      render();
+    })();
+  </script>
+</body>
+</html>
+

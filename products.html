@@ -1,0 +1,203 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Vyral • Products</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <header class="site-header">
+    <div class="container nav">
+      <div class="brand">Vyral</div>
+      <nav class="primary-nav">
+        <a href="index.html#">Home</a>
+        <a href="products.html">Products</a>
+        <a href="index.html#about">About</a>
+        <a href="index.html#contact">Contact</a>
+      </nav>
+      <div class="actions">
+        <a class="cta" href="#products">Shop Now</a>
+        <a class="cart" href="#cart" aria-label="Cart">Cart <span id="cart-count">0</span></a>
+      </div>
+    </div>
+  </header>
+
+  <main>
+    <section class="product-section" id="products">
+      <div class="container">
+        <h2>Our Products</h2>
+        <div class="product-grid" id="grid"></div>
+      </div>
+    </section>
+  </main>
+
+  <footer class="site-footer" id="contact">
+    <div class="container">
+      <p>© 2025 Vyral • All rights reserved</p>
+    </div>
+  </footer>
+
+  <!-- Cart UI -->
+  <div class="overlay" id="overlay" hidden></div>
+  <aside class="cart-drawer" id="cart-drawer" aria-hidden="true" aria-labelledby="cart-title" role="dialog">
+    <div class="cart-header">
+      <h3 id="cart-title">Your Cart</h3>
+      <button class="icon-btn" id="cart-close" aria-label="Close cart">×</button>
+    </div>
+    <div class="cart-body">
+      <ul id="cart-items" class="cart-items"></ul>
+    </div>
+    <div class="cart-footer">
+      <div class="total"><span>Subtotal</span><strong id="cart-subtotal">R0.00</strong></div>
+      <div class="total"><span>Fee</span><strong>R50.00</strong></div>
+      <div class="total"><span>Total</span><strong id="cart-total">R50.00</strong></div>
+      <div class="cart-actions">
+        <button class="btn small" id="cart-clear" type="button">Clear</button>
+        <a class="btn primary" href="checkout.html">Checkout</a>
+      </div>
+    </div>
+  </aside>
+
+  <script>
+    (function(){
+      const STORAGE_KEY = 'vyral_cart';
+      const countEl = document.getElementById('cart-count');
+      const grid = document.getElementById('grid');
+      const drawer = document.getElementById('cart-drawer');
+      const overlay = document.getElementById('overlay');
+      const itemsEl = document.getElementById('cart-items');
+      const totalEl = document.getElementById('cart-total');
+      const clearBtn = document.getElementById('cart-clear');
+
+      const catalog = [
+        { slug:'vyral-rug', title:'Vyral Rug', price:129, image:'https://picsum.photos/seed/vyral1/600/600', blurb:'Statement rug for bold spaces.' },
+        { slug:'brick-art-set', title:'Brick Art Set', price:59, image:'https://picsum.photos/seed/vyral2/600/600', blurb:'Modular pop-culture brick set.' },
+        { slug:'neon-ornament', title:'Neon Ornament', price:39, image:'https://picsum.photos/seed/vyral3/600/600', blurb:'Bring glow to any corner.' },
+        { slug:'hype-poster', title:'Hype Poster', price:29, image:'https://picsum.photos/seed/vyral4/600/600', blurb:'Minimal print that stands out.' },
+        { slug:'studio-lamp', title:'Studio Lamp', price:89, image:'https://picsum.photos/seed/vyral5/600/600', blurb:'Matte black with warm glow.' },
+        { slug:'desk-mat', title:'Desk Mat', price:24, image:'https://picsum.photos/seed/vyral6/600/600', blurb:'Smooth surface, clean lines.' }
+      ];
+
+      function readCart(){ try { return JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]'); } catch { return []; } }
+      function writeCart(items){ localStorage.setItem(STORAGE_KEY, JSON.stringify(items)); }
+      function updateCount(){ const items = readCart(); const totalQty = items.reduce((s,i)=>s+(i.qty||1),0); if (countEl) countEl.textContent = String(totalQty); }
+
+      function renderGrid(){
+        grid.innerHTML = catalog.map(p => `
+          <article class="product-card" data-slug="${p.slug}">
+            <a class="product-link" href="product.html?slug=${p.slug}">
+              <img src="${p.image}" alt="${p.title}">
+              <h3>${p.title}</h3>
+              <p>${p.blurb}</p>
+            </a>
+            <div class="card-footer">
+              <span class="price" data-price="${p.price}">R${p.price}</span>
+              <button class="btn small add-to-cart" type="button">Add to Cart</button>
+            </div>
+          </article>
+        `).join('');
+        syncButtonsWithCart();
+      }
+
+      function renderCart(){
+        const items = readCart();
+        itemsEl.innerHTML = items.map(it => {
+          const line = (it.price * (it.qty || 1)).toFixed(2);
+          return `
+            <li class="cart-item" data-key="${it.key}">
+              <img src="${it.image}" alt="${it.title}">
+              <div class="meta">
+                <div class="title">${it.title}</div>
+                <div class="price-qty">R${it.price.toFixed(2)} × ${it.qty || 1}</div>
+              </div>
+              <div class="line">
+                <span>R${line}</span>
+                <button class="icon-btn remove" aria-label="Remove">×</button>
+              </div>
+            </li>`;
+        }).join('');
+        const subtotal = items.reduce((s,it)=>s+it.price*(it.qty||1),0);
+        const fee = 50;
+        const total = subtotal + fee;
+        document.getElementById('cart-subtotal').textContent = 'R' + subtotal.toFixed(2);
+        totalEl.textContent = 'R' + total.toFixed(2);
+      }
+
+      function addToCartFromCard(card){
+        const title = card.querySelector('h3')?.textContent?.trim() || 'Item';
+        const priceAttr = card.querySelector('.price')?.getAttribute('data-price') || '0';
+        const price = parseFloat(priceAttr) || 0;
+        const image = card.querySelector('img')?.src || '';
+        const slug = card.getAttribute('data-slug') || title.toLowerCase().replace(/\s+/g,'-');
+        const items = readCart();
+        const key = slug + '|' + price;
+        const existing = items.find(i=>i.key===key);
+        if (existing) {
+          existing.qty = 1; // limit to one per product
+          const btn = card.querySelector('.add-to-cart');
+          if (btn) { btn.textContent = 'Added'; btn.disabled = true; }
+          updateCount();
+          renderCart();
+          return;
+        }
+        items.push({ key, slug, title, price, image, qty: 1 });
+        writeCart(items);
+        updateCount();
+        renderCart();
+        const btn = card.querySelector('.add-to-cart');
+        if (btn) { btn.classList.remove('pulse'); void btn.offsetWidth; btn.classList.add('pulse'); }
+      }
+
+      function openCart(){ renderCart(); drawer?.setAttribute('aria-hidden','false'); overlay?.removeAttribute('hidden'); document.body.style.overflow='hidden'; }
+      function closeCart(){ drawer?.setAttribute('aria-hidden','true'); overlay?.setAttribute('hidden',''); document.body.style.overflow=''; }
+
+      function syncButtonsWithCart(){
+        const items = readCart();
+        const keys = new Set(items.map(i => i.key));
+        grid.querySelectorAll('.product-card').forEach(card => {
+          const slug = card.getAttribute('data-slug') || '';
+          const price = parseFloat(card.querySelector('.price')?.getAttribute('data-price') || '0') || 0;
+          const key = slug + '|' + price;
+          const btn = card.querySelector('.add-to-cart');
+          if (!btn) return;
+          if (keys.has(key)) { btn.textContent = 'Added'; btn.disabled = true; }
+          else { btn.textContent = 'Add to Cart'; btn.disabled = false; }
+        });
+      }
+
+      document.addEventListener('click', function(e){
+        const addBtn = e.target.closest('.add-to-cart');
+        if (addBtn) { const card = addBtn.closest('.product-card'); if (card) addToCartFromCard(card); return; }
+        const cartLink = e.target.closest('.cart');
+        if (cartLink) { e.preventDefault(); openCart(); return; }
+        const close = e.target.closest('#cart-close');
+        if (close) { closeCart(); return; }
+        if (e.target === overlay) { closeCart(); return; }
+        const removeBtn = e.target.closest('.cart-item .remove');
+        if (removeBtn) {
+          const li = removeBtn.closest('.cart-item');
+          const key = li?.getAttribute('data-key');
+          if (key) {
+            const items = readCart().filter(i=>i.key!==key);
+            writeCart(items);
+            updateCount();
+            renderCart();
+            // Re-enable add button for the removed item
+            const slug = key.split('|')[0];
+            const card = grid.querySelector(`.product-card[data-slug="${slug}"]`);
+            const btn = card?.querySelector('.add-to-cart');
+            if (btn) { btn.textContent = 'Add to Cart'; btn.disabled = false; }
+          }
+          return;
+        }
+      });
+
+      updateCount();
+      renderGrid();
+      renderCart();
+    })();
+  </script>
+</body>
+</html>
+
